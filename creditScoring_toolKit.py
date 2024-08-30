@@ -8,7 +8,7 @@ import numpy as np
 from sklearn.tree import DecisionTreeClassifier, _tree
 
 
-# Crea una lista con las variables categoricas y numericas
+# Crea dos listas con las variables categoricas y numericas
 def var_numericas_categoricas(base: pd.DataFrame, drop_col: list = []):
     numericas = []
     categoricas = []
@@ -103,3 +103,45 @@ def calculate_iv_num(base: pd.DataFrame, target: pd.DataFrame, variable: str, bi
     iv_df = pd.DataFrame({'variable': [variable], 'IV': [iv]})
 
     return iv_df, grouped
+
+
+# Crea base WOEs
+def base_woes(clave: str, variable: str, base_variables: pd.DataFrame, base_categorias: pd.DataFrame):
+    # Para variables categoricas
+    if base_variables[variable].dtype in ('float64', 'int64'):
+        # Filtrar las categorías para la variable especificada
+        categorias = base_categorias[base_categorias['variable'] == variable]
+        categorias = categorias[['categoria', 'woe']]
+
+        # Crear los intervalos a partir de la columna 'bin'
+        bin_intervals = pd.IntervalIndex.from_tuples(
+            [parse_bin(b) for b in categorias['categoria']])
+
+        # Crear el mapeo de intervalos a valores WOE
+        woe_mapping = pd.Series(categorias['woe'].values, index=bin_intervals)
+
+        # Crear una copia del DataFrame base_variables para agregar la columna WOE
+        categoria_woe = base_variables[[clave, variable]].copy()
+
+        # Asignar los valores WOE a la variable especificada en el DataFrame base_variables
+        categoria_woe[f'{variable}_woe'] = pd.cut(
+            categoria_woe[variable], bins=bin_intervals).map(woe_mapping)
+
+    # Para variables numericas
+    else:
+        # Filtrar las categorías para la variable especificada
+        categorias = base_categorias[base_categorias['variable'] == variable]
+        categorias = categorias[['categoria', 'woe']]
+
+        # Crear el mapeo de intervalos a valores WOE
+        woe_mapping = pd.Series(
+            categorias['woe'].values, index=categorias['categoria'])
+
+        # Crear una copia del DataFrame base_variables para agregar la columna WOE
+        categoria_woe = base_variables[[clave, variable]].copy()
+
+        # Asignar los valores WOE a la variable especificada en el DataFrame base_variables
+        categoria_woe[f'{variable}_woe'] = categoria_woe[variable].map(
+            woe_mapping)
+
+    return categoria_woe[[clave, f'{variable}_woe']]
