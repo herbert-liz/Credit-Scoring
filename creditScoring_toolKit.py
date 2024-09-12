@@ -8,7 +8,7 @@ import numpy as np
 from sklearn.tree import DecisionTreeClassifier, _tree
 
 
-# Crea dos listas con las variables categoricas y numericas
+# Lista de variables categoricas
 def var_numericas_categoricas(base: pd.DataFrame, drop_col: list = []):
     numericas = []
     categoricas = []
@@ -21,19 +21,9 @@ def var_numericas_categoricas(base: pd.DataFrame, drop_col: list = []):
 
     return numericas, categoricas
 
-
-# Calcula las categorias optimas para variables numerica usando arboles de decision
-def optimal_binning(base: pd.DataFrame, target: pd.DataFrame, variable, max_depth: int = 3, min_samples_leaf: int = 0.05):
-    tree = DecisionTreeClassifier(
-        max_depth=max_depth, min_samples_leaf=min_samples_leaf)
-    tree.fit(base[[variable]].values.reshape(-1, 1), target)
-    limites = tree.tree_.threshold[tree.tree_.threshold != -2]
-    limites = np.sort(limites)
-    limites = np.concatenate(([-np.inf], limites, [np.inf]))
-    return limites
-
-
 # Calcula los WOEs e IV para variables categoricas
+
+
 def calculate_iv_cat(base: pd.DataFrame, target: pd.DataFrame, variable: str):
     # Agregamos target
     base['target'] = target.iloc[:, 0]
@@ -67,7 +57,19 @@ def calculate_iv_cat(base: pd.DataFrame, target: pd.DataFrame, variable: str):
     return iv_df, grouped
 
 
+# Calcula las categorias optimas para variables numerica usando arboles de decision
+def optimal_binning(base: pd.DataFrame, target: pd.DataFrame, variable, max_depth: int = 3, min_samples_leaf: int = 0.05):
+    tree = DecisionTreeClassifier(
+        max_depth=max_depth, min_samples_leaf=min_samples_leaf)
+    tree.fit(base[[variable]].values.reshape(-1, 1), target)
+    limites = tree.tree_.threshold[tree.tree_.threshold != -2]
+    limites = np.sort(limites)
+    limites = np.concatenate(([-np.inf], limites, [np.inf]))
+    return limites
+
 # Calcula los WOEs e IV para variables numericas
+
+
 def calculate_iv_num(base: pd.DataFrame, target: pd.DataFrame, variable: str, bins):
     # Agregamos target
     base['target'] = target.iloc[:, 0]
