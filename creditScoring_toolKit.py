@@ -56,53 +56,48 @@ def calculate_iv_cat(base: pd.DataFrame, variable: str, target: str):
 
     return iv_df, grouped
 
-
-
 # Calcula las categorias optimas para variables numerica usando arboles de decision
-def optimal_binning(base: pd.DataFrame, target: pd.DataFrame, variable, max_depth: int = 3, min_samples_leaf: int = 0.05):
-    tree = DecisionTreeClassifier(
-        max_depth=max_depth, min_samples_leaf=min_samples_leaf)
-    tree.fit(base[[variable]].values.reshape(-1, 1), target)
+def optimal_binning(base: pd.DataFrame, variable: str, target: str, max_depth: int = 3, min_samples_leaf: int = 0.05):
+    tree = DecisionTreeClassifier(max_depth=max_depth, min_samples_leaf=min_samples_leaf)
+    tree.fit(base[[variable]], base[[target]])
     limites = tree.tree_.threshold[tree.tree_.threshold != -2]
     limites = np.sort(limites)
     limites = np.concatenate(([-np.inf], limites, [np.inf]))
     return limites
 
 # Calcula los WOEs e IV para variables numericas
-
-
-def calculate_iv_num(base: pd.DataFrame, target: pd.DataFrame, variable: str, bins):
-    # Agregamos target
-    base['target'] = target.iloc[:, 0]
-
-    base['categoria'] = pd.cut(base[variable], bins=bins, duplicates='drop')
-    grouped = base.groupby('categoria', observed=False)[
-        'target'].agg(['cantidad', 'sum'])
-    grouped['good'] = grouped['sum']
-    grouped['bad'] = grouped['cantidad'] - grouped['sum']
+def calculate_iv_num(base: pd.DataFrame, variable: str, target: str, categorias):
+    base['categoria'] = pd.cut(base[variable], bins=categorias, duplicates='drop')
+    
+    # Buenos y malos por categoria 
+    grouped = base.groupby('categoria', observed=False)[target].agg(cantidad='count', good='sum')
+    grouped['bad'] = grouped['cantidad'] - grouped['good']
     grouped['good_dist'] = grouped['good'] / grouped['good'].sum()
     grouped['bad_dist'] = grouped['bad'] / grouped['bad'].sum()
-    grouped['woe'] = np.log(grouped['good_dist'] / grouped['bad_dist'])
-    grouped['iv'] = (grouped['good_dist'] -
-                     grouped['bad_dist']) * grouped['woe']
-    grouped['iv'] = np.where((grouped['bad'] == 0) | (
-        grouped['good'] == 0), 0, grouped['iv'])
-    grouped['iv'] = np.where((grouped['bad'] == 0) | (
-        grouped['good'] == 0), 0, grouped['iv'])
+    
+    # Calcular WOE (si good o bad es 0, el WOE sera 0)
+    grouped['woe'] = np.where((grouped['good'] == 0) | (grouped['bad'] == 0), 0,
+                              np.log((grouped['good_dist']) / (grouped['bad_dist'])))
+    
+    # Calcular el IV (si good o bad es 0, el IV sera 0)
+    grouped['iv'] = np.where((grouped['good'] == 0) | (grouped['bad'] == 0), 0,
+                             (grouped['good_dist'] - grouped['bad_dist']) * grouped['woe'])
     grouped['iv_total'] = grouped['iv'].sum()
+
+    # Distribuciones dentro de categoria y totales
     grouped['dist'] = grouped['cantidad'] / grouped['cantidad'].sum()
     grouped['good_cat'] = grouped['good'] / grouped['cantidad']
     grouped['bad_cat'] = grouped['bad'] / grouped['cantidad']
     grouped['good_total'] = grouped['good'].sum() / grouped['cantidad'].sum()
-    iv = grouped['iv'].sum()
-
+    
+    # Desagrupamos y creamos columna con nombre de variable analizada
     grouped = grouped.reset_index()
     grouped = grouped.rename(columns={variable: 'categoria'})
+    grouped['variable'] = variable
+    grouped = grouped[['variable','categoria','cantidad','good','bad','good_dist','bad_dist','woe','iv','iv_total','dist','good_cat','bad_cat','good_total']]
 
-    grouped[['variable']] = variable
-    grouped = grouped[['variable', 'categoria', 'cantidad', 'sum', 'good', 'bad', 'good_dist',
-                       'bad_dist', 'woe', 'iv', 'iv_total', 'dist', 'good_cat', 'bad_cat', 'good_total']]
-
+    # Creamos df con el IV de la variable analizada
+    iv = grouped['iv'].sum()
     iv_df = pd.DataFrame({'variable': [variable], 'IV': [iv]})
 
     return iv_df, grouped
