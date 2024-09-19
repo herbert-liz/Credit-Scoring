@@ -102,9 +102,8 @@ def calculate_iv_num(base: pd.DataFrame, variable: str, target: str, categorias)
 
     return iv_df, grouped
 
-
 # Crea base WOEs
-def base_woes(clave: str, variable: str, base_variables: pd.DataFrame, base_categorias: pd.DataFrame):
+def base_woes(base_variables: pd.DataFrame, clave: str, variable: str, base_categorias: pd.DataFrame):
     # Para variables categoricas
     if base_variables[variable].dtype in ('float64', 'int64'):
         # Filtrar las categorías para la variable especificada
