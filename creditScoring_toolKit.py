@@ -102,6 +102,18 @@ def calculate_iv_num(base: pd.DataFrame, variable: str, target: str, categorias)
 
     return iv_df, grouped
 
+# Convierte loas categorias de los woes en tuplas
+def convertir_tuplas(bin_str):
+    # Remover los paréntesis y espacios, y luego dividir en base a la coma
+    left, right = bin_str.strip('()[]').split(',')
+    
+    # Convertir los límites a float, usando -inf y inf donde corresponda
+    left = float(left) if left.strip() != '-inf' else -np.inf
+    right = float(right) if right.strip() != 'inf' else np.inf
+    
+    return left, right
+
+
 # Crea base WOEs
 def base_woes(base_variables: pd.DataFrame, clave: str, variable: str, base_categorias: pd.DataFrame):
     # Para variables categoricas
@@ -112,7 +124,7 @@ def base_woes(base_variables: pd.DataFrame, clave: str, variable: str, base_cate
 
         # Crear los intervalos a partir de la columna 'bin'
         bin_intervals = pd.IntervalIndex.from_tuples(
-            [parse_bin(b) for b in categorias['categoria']])
+            [convertir_tuplas(b) for b in categorias['categoria']])
 
         # Crear el mapeo de intervalos a valores WOE
         woe_mapping = pd.Series(categorias['woe'].values, index=bin_intervals)
