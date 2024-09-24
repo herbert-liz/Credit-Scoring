@@ -100,6 +100,9 @@ def calculate_iv_num(base: pd.DataFrame, variable: str, target: str, categorias)
     iv = grouped['iv'].sum()
     iv_df = pd.DataFrame({'variable': [variable], 'IV': [iv]})
 
+    # Eliminamos variable que creamos para agrupar
+    del(base['categoria'])
+
     return iv_df, grouped
 
 # Convierte loas categorias de los woes en tuplas
@@ -115,42 +118,38 @@ def convertir_tuplas(bin_str):
 
 
 # Crea base WOEs
-def base_woes(base_variables: pd.DataFrame, clave: str, variable: str, base_categorias: pd.DataFrame):
-    # Para variables categoricas
+def base_woes(base_variables: pd.DataFrame, variable: str, base_categorias: pd.DataFrame):
+    # Para variables numéricas
     if base_variables[variable].dtype in ('float64', 'int64'):
         # Filtrar las categorías para la variable especificada
         categorias = base_categorias[base_categorias['variable'] == variable]
         categorias = categorias[['categoria', 'woe']]
 
-        # Crear los intervalos a partir de la columna 'bin'
-        bin_intervals = pd.IntervalIndex.from_tuples(
-            [convertir_tuplas(b) for b in categorias['categoria']])
+        # Crear los intervalos a partir de la columna 'categoria'
+        bin_intervals = pd.IntervalIndex.from_tuples([convertir_tuplas(str(b)) for b in categorias['categoria']])
 
         # Crear el mapeo de intervalos a valores WOE
         woe_mapping = pd.Series(categorias['woe'].values, index=bin_intervals)
 
         # Crear una copia del DataFrame base_variables para agregar la columna WOE
-        categoria_woe = base_variables[[clave, variable]].copy()
+        categoria_woe = base_variables[[variable]].copy()
 
         # Asignar los valores WOE a la variable especificada en el DataFrame base_variables
-        categoria_woe[f'{variable}_woe'] = pd.cut(
-            categoria_woe[variable], bins=bin_intervals).map(woe_mapping)
+        categoria_woe[f'{variable}_woe'] = pd.cut(categoria_woe[variable], bins=bin_intervals).map(woe_mapping)
 
-    # Para variables numericas
+    # Para variables categóricas
     else:
         # Filtrar las categorías para la variable especificada
         categorias = base_categorias[base_categorias['variable'] == variable]
         categorias = categorias[['categoria', 'woe']]
 
-        # Crear el mapeo de intervalos a valores WOE
-        woe_mapping = pd.Series(
-            categorias['woe'].values, index=categorias['categoria'])
+        # Crear el mapeo de categorías a valores WOE
+        woe_mapping = pd.Series(categorias['woe'].values, index=categorias['categoria'])
 
         # Crear una copia del DataFrame base_variables para agregar la columna WOE
-        categoria_woe = base_variables[[clave, variable]].copy()
+        categoria_woe = base_variables[[variable]].copy()
 
         # Asignar los valores WOE a la variable especificada en el DataFrame base_variables
-        categoria_woe[f'{variable}_woe'] = categoria_woe[variable].map(
-            woe_mapping)
+        categoria_woe[f'{variable}_woe'] = categoria_woe[variable].map(woe_mapping)
 
-    return categoria_woe[[clave, f'{variable}_woe']]
+    return categoria_woe[[f'{variable}_woe']]
