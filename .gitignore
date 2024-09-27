@@ -1,2 +1,6 @@
 Data/train.csv
 Data/test.csv
+Data/X_train.csv
+Data/X_test.csv
+Data/y_train.csv
+Data/y_test.csv
